@@ -12,8 +12,6 @@ export default function Table(props: TableProps) {
   const { trainings, currentWeek, selectedWeek } = props
   const [player, setPlayer] = useState<any>(null)
 
-  console.log('player', player)
-  console.log('tarinings', trainings)
   const columns = [
     'name',
     'form',
@@ -41,7 +39,7 @@ export default function Table(props: TableProps) {
     console.log('trainings', trainings, currentWeek)
     return trainings.data
       .find((each: any) => each._id === currentWeek)
-      .data.players.map((each: any) => {
+      ?.data.players.map((each: any) => {
         if (selectedWeek === currentWeek) {
           return (
             <tr key={each.id} onClick={() => setPlayer(each)}>
@@ -209,7 +207,7 @@ export default function Table(props: TableProps) {
         <tbody>{getSkills()}</tbody>
       </table>
 
-      <div id="chart-wrapper">
+      <div id="player-skills-wrapper">
         {player && (
           <div>
             <h3>{player.player.name.full}</h3>
@@ -217,29 +215,99 @@ export default function Table(props: TableProps) {
               <div>id: {player.id}</div>
 
               <div>
-                {trainings.data.map((training: any) => {
+                {trainings.data.map((training: any, index) => {
                   const id = training._id
 
                   const player1 = training.data.players.find(
                     (each: any) => each.id === player.id
                   )
 
+                  const prevplayer1 =
+                    trainings.data[index - 1]?.data?.players?.find(
+                      (each: any) => each.id === player.id
+                    ) || {}
+
                   if (!player1) {
                     return null
                   }
                   const playerSkills = player1.report.skills
+                  const playerPrevSkills = prevplayer1?.report?.skills || {}
+
+                  const trainingKind = player1.report.type.name
+                  const injury = player1.report.injury.severe
+
+                  const getStyle = (
+                    player: any,
+                    prevPlayer: any,
+                    skill: string
+                  ) => {
+                    return {
+                      backgroundColor:
+                        prevPlayer && prevPlayer[skill] < player[skill]
+                          ? 'green'
+                          : prevPlayer[skill] > player[skill]
+                            ? 'red'
+                            : 'transparent'
+                    }
+                  }
 
                   return (
                     <div key={id} className="flex space-x-4">
                       <div>{id}</div>
-                      <div>{playerSkills.pace}</div>
-                      <div>{playerSkills.technique}</div>
-                      <div>{playerSkills.passing}</div>
-                      <div>{playerSkills.keeper}</div>
+                      <div
+                        style={getStyle(playerSkills, playerPrevSkills, 'pace')}
+                      >
+                        {playerSkills.pace}
+                      </div>
+                      <div
+                        style={getStyle(
+                          playerSkills,
+                          playerPrevSkills,
+                          'technique'
+                        )}
+                      >
+                        {playerSkills.technique}
+                      </div>
+                      <div
+                        style={getStyle(
+                          playerSkills,
+                          playerPrevSkills,
+                          'passing'
+                        )}
+                      >
+                        {playerSkills.passing}
+                      </div>
+                      <div
+                        style={getStyle(
+                          playerSkills,
+                          playerPrevSkills,
+                          'keeper'
+                        )}
+                      >
+                        {playerSkills.keeper}
+                      </div>
 
-                      <div>{playerSkills.defending}</div>
-                      <div>{playerSkills.playmaking}</div>
+                      <div
+                        style={getStyle(
+                          playerSkills,
+                          playerPrevSkills,
+                          'defending'
+                        )}
+                      >
+                        {playerSkills.defending}
+                      </div>
+                      <div
+                        style={getStyle(
+                          playerSkills,
+                          playerPrevSkills,
+                          'playmaking'
+                        )}
+                      >
+                        {playerSkills.playmaking}
+                      </div>
                       <div>{playerSkills.striker}</div>
+                      <div>{injury ? 'injured' : 'healthy'}</div>
+                      <div>{trainingKind}</div>
                     </div>
                   )
                 })}
@@ -275,15 +343,20 @@ export default function Table(props: TableProps) {
 
               const week = report.week
 
-              console.log('report', report)
-
-              return [week, report.skills[skill], report.type.name]
+              return {
+                week,
+                skill: report.skills[skill],
+                kind: report.kind.name === 'individual' && report.type.name,
+                injury: report.injury.severe
+              }
             })
 
             const options = {
               grid: { top: 20, right: 40, bottom: 20, left: 40 },
               xAxis: {
-                data: trainingData.map((perWeek: any) => perWeek && perWeek[0])
+                data: trainingData.map(
+                  (perWeek: any) => perWeek && perWeek.week
+                )
               },
               yAxis: {
                 type: 'value'
@@ -293,10 +366,11 @@ export default function Table(props: TableProps) {
                   type: 'bar',
                   data: trainingData.map((perWeek: any) => {
                     return {
-                      value: perWeek && perWeek[1],
+                      value: perWeek && perWeek.skill,
                       itemStyle: {
-                        color:
-                          perWeek && perWeek[2] !== skill
+                        color: perWeek?.injury
+                          ? '#ff4d4f'
+                          : perWeek && perWeek.kind !== skill
                             ? '#475b6b'
                             : '#cc8b62'
                       }
@@ -309,16 +383,11 @@ export default function Table(props: TableProps) {
               }
             }
 
-            console.log('trainingData', trainingData)
-
             return (
-              <div key={skill} className="w-[600px]">
+              <div key={skill} className="w-full">
                 <div>{skill}</div>
 
-                <ReactEcharts
-                  option={options}
-                  style={{ width: '600px', height: '300px' }}
-                ></ReactEcharts>
+                <ReactEcharts option={options}></ReactEcharts>
               </div>
             )
           })}

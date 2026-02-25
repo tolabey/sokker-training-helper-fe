@@ -3,11 +3,16 @@
 import { useState } from 'react'
 import Team from './team'
 import Table from './table'
+import JuniorTable from './JuniorTable'
 
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [trainings, setTrainings] = useState<Record<number, any>>({})
+  const [juniorTrainings, setJuniorTrainings] = useState<Record<number, any>>(
+    {}
+  )
+
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
 
   const [current, setCurrent] = useState<any>(null)
@@ -28,9 +33,17 @@ export default function Login() {
         }).toString()
     )
 
+    const currentJuniorsResp = await fetch(
+      'http://localhost:3001/save-juniors?' +
+        new URLSearchParams({
+          week: currentWeek
+        }).toString()
+    )
+    const currentJuniorsData = await currentJuniorsResp.json()
     const currentData = await currentDataResp.json()
 
     setCurrent(resp.current)
+    setJuniorTrainings(currentJuniorsData)
     setSelectedWeek(resp.current.today.week)
     setTrainings(currentData)
   }
@@ -43,9 +56,10 @@ export default function Login() {
     await fetch('http://localhost:3001/current')
   }
 
+  console.log('trainings', trainings)
+
   return (
     <div>
-      <h3>Hello Login</h3>
       <div className="space-x-2 flex">
         <input
           placeholder="username"
@@ -65,19 +79,14 @@ export default function Login() {
       </div>
       <Team team={current} />
 
-      {trainings &&
-        Object.keys(trainings).map((week) => {
-          return (
-            <button key={week} onClick={() => setSelectedWeek(Number(week))}>
-              {week}
-            </button>
-          )
-        })}
-
       <Table
         trainings={trainings}
         currentWeek={current?.today.week as number}
         selectedWeek={selectedWeek}
+      />
+      <JuniorTable
+        juniors={juniorTrainings}
+        currentWeek={current?.today.week as number}
       />
     </div>
   )
